@@ -1,2 +1,5 @@
 .venv
+.env
 docs.md
+logs/
+secrets/
