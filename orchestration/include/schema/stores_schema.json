@@ -1,0 +1,10 @@
+[
+    {"name": "store_id", "type": "INTEGER", "mode": "NULLABLE"},
+    {"name": "country", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "city", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "store_name", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "number_of_employees", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "zip_code", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "latitude", "type": "FLOAT64", "mode": "NULLABLE"},
+    {"name": "longitude", "type": "FLOAT64", "mode": "NULLABLE"}
+]

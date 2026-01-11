@@ -1,0 +1,6 @@
+[
+    {"name": "employeeid", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "storeid", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "name", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "position", "type": "STRING", "mode": "NULLABLE"}
+]

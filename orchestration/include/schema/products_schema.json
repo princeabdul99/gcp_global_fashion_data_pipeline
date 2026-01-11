@@ -1,0 +1,15 @@
+[
+    {"name": "productid", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "category", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "subcategory", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "description_pt", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "description_de", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "description_fr", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "description_es", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "description_en", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "description_zh", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "color", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "sizes", "type": "STRING", "mode": "NULLABLE"},
+    {"name": "productioncost", "type": "FLOAT", "mode": "NULLABLE"}
+
+]
