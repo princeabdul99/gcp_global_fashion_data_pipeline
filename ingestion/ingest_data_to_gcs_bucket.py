@@ -58,7 +58,7 @@ def load_data_to_gcs(source_file_path:str, folder_name:str, destination_filename
 
 if __name__ == '__main__':
     load_data_to_gcs(
-        source_file_path="/data/products.csv",
-        folder_name="products"    
+        source_file_path="/data/transactions/transaction-2023-01.csv.gz",
+        folder_name="transactions"    
     )
 
