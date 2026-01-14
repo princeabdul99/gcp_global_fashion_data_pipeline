@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from airflow.sdk import DAG
 from airflow.models import Variable
-from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator, BigQueryCheckOperator
 
 load_dotenv()
 
@@ -43,6 +43,7 @@ bq_gold_dataset = settings['bq_gold_dataset']
 
 # Macros
 logical_date = '{{ ds }}'
+logical_date_nodash = '{{ ds_nodash }}'
 
 # Ext Tbl
 bq_bronze_ext_table = create_sql_ext_tbl("/opt/airflow/include/raw_data_generation/bronze_ext_tbl.sql")
@@ -108,21 +109,25 @@ bq_transactions_silver_source_tbl = create_sql_ext_tbl("/opt/airflow/include/dat
 
 
 # DWH - Gold Layer
-bq_fact_sales_table_name = "fact_transaction_sales"
+bq_fact_sales_table_name = "fact_transaction"
 bq_fact_sales_table_id = f"{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_fact_sales_table_name}"
+bq_transactions_gold_source_tbl = create_sql_ext_tbl("/opt/airflow/include/data_mart/fact_transactions.sql")
 
 bq_dim_customers_table_name = "dim_customers"
 bq_dim_customers_table_id = f"{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_customers_table_name}"
+bq_customers_gold_source_tbl = create_sql_ext_tbl("/opt/airflow/include/data_mart/dim_customers.sql")
 
 bq_dim_products_table_name = "dim_products"
 bq_dim_products_table_id = f"{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_products_table_name}"
+bq_products_gold_source_tbl = create_sql_ext_tbl("/opt/airflow/include/data_mart/dim_products.sql")
 
 bq_dim_employees_table_name = "dim_employees"
 bq_dim_employees_table_id = f"{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_employees_table_name}"
+bq_employees_gold_source_tbl = create_sql_ext_tbl("/opt/airflow/include/data_mart/dim_employees.sql")
 
 bq_dim_stores_table_name = "dim_stores"
 bq_dim_stores_table_id = f"{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_stores_table_name}"
-
+bq_stores_gold_source_tbl = create_sql_ext_tbl("/opt/airflow/include/data_mart/dim_stores.sql")
 
 
 
@@ -357,15 +362,194 @@ with DAG(
     ) 
 
 
+    ### Load GOLD LAYER Tables (dim & fact) ###
+    # Fact Transactions
+    bq_gold_fact_transactions = BigQueryInsertJobOperator(
+        task_id="bq_gold_fact_transactions",
+        configuration={
+            "query": {
+                "query": bq_transactions_gold_source_tbl,
+                "useLegacySql": False,
+                # "destinationTable": {
+                #     "projectId": GCP_PROJECT_ID,
+                #     "datasetId": bq_gold_dataset,
+                #     "tableId": f"{bq_fact_sales_table_name}"
+                #     # "tableId": f"{bq_fact_sales_table_name}_${logical_date_nodash}"
+                # },
+                # "createDisposition": 'CREATE_IF_NEEDED',
+                # "writeDisposition": "WRITE_TRUNCATE",
+                # "timePartitioning": {
+                #     'type': 'DAY',
+                #     'field': 'transaction_date'
+                # },
+                "priority": "BATCH"
+            }
+        },
+        params={
+            "silver_table": bq_transactions_silver_table_id,
+            "dim_table_join_product": bq_dim_products_table_id,
+            "dim_table_join_emp": bq_dim_employees_table_id,
+            "dim_table_join_store": bq_dim_stores_table_id,
+            "gold_table": bq_fact_sales_table_id,
+        },
+    )
+
+    # dim customers
+    bq_gold_dim_customers = BigQueryInsertJobOperator(
+        task_id="bq_gold_dim_customers",
+        configuration={
+            "query": {
+                "query": bq_customers_gold_source_tbl,
+                "useLegacySql": False,
+                "destinationTable": {
+                    "projectId": GCP_PROJECT_ID,
+                    "datasetId": bq_gold_dataset,
+                    "tableId": bq_dim_customers_table_name
+                },
+                "createDisposition": 'CREATE_IF_NEEDED',
+                "writeDisposition": "WRITE_TRUNCATE",
+                "priority": "BATCH"
+            }
+        },
+        params={
+            "silver_table": bq_customers_silver_table_id
+        },        
+    )    
+
+    # dim products
+    bq_gold_dim_products = BigQueryInsertJobOperator(
+        task_id="bq_gold_dim_products",
+        configuration={
+            "query": {
+                "query": bq_products_gold_source_tbl,
+                "useLegacySql": False,
+                "destinationTable": {
+                    "projectId": GCP_PROJECT_ID,
+                    "datasetId": bq_gold_dataset,
+                    "tableId": bq_dim_products_table_name
+                },
+                "createDisposition": 'CREATE_IF_NEEDED',
+                "writeDisposition": "WRITE_TRUNCATE",
+                "priority": "BATCH"
+            }
+        },
+        params={
+            "silver_table": bq_products_silver_table_id
+        },        
+    )
+
+    # dim employees
+    bq_gold_dim_employees = BigQueryInsertJobOperator(
+        task_id="bq_gold_dim_employees",
+        configuration={
+            "query": {
+                "query": bq_employees_gold_source_tbl,
+                "useLegacySql": False,
+                "destinationTable": {
+                    "projectId": GCP_PROJECT_ID,
+                    "datasetId": bq_gold_dataset,
+                    "tableId": bq_dim_employees_table_name
+                },
+                "createDisposition": 'CREATE_IF_NEEDED',
+                "writeDisposition": "WRITE_TRUNCATE",
+                "priority": "BATCH"
+            }
+        },
+        params={
+            "silver_table": bq_employees_silver_table_id,
+            "silver_table_join": bq_stores_silver_table_id,
+        },        
+    )
+
+    # dim stores
+    bq_gold_dim_stores = BigQueryInsertJobOperator(
+        task_id="bq_gold_dim_stores",
+        configuration={
+            "query": {
+                "query": bq_stores_gold_source_tbl,
+                "useLegacySql": False,
+                "destinationTable": {
+                    "projectId": GCP_PROJECT_ID,
+                    "datasetId": bq_gold_dataset,
+                    "tableId": bq_dim_stores_table_name
+                },
+                "createDisposition": 'CREATE_IF_NEEDED',
+                "writeDisposition": "WRITE_TRUNCATE",
+                "priority": "BATCH"
+            }
+        },
+        params={
+            "silver_table": bq_stores_silver_table_id,
+        },        
+    )
 
 
+    ######## BQ Row Count Checker 
+    bq_row_count_check_on_fact_transactions = BigQueryCheckOperator(
+        task_id = 'bq_row_count_check_on_fact_transactions',
+        sql=f"""
+            SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_fact_sales_table_name}`
+            """,
+        use_legacy_sql=False
+    )
 
+    bq_row_count_check_on_dim_stores = BigQueryCheckOperator(
+        task_id = 'bq_row_count_check_on_dim_stores',
+        sql=f"""
+            SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_stores_table_name}`
+            """,
+        use_legacy_sql=False
+    ) 
+
+    bq_row_count_check_on_dim_employees = BigQueryCheckOperator(
+        task_id = 'bq_row_count_check_on_dim_employees',
+        sql=f"""
+            SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_employees_table_name}`
+            """,
+        use_legacy_sql=False
+    ) 
+
+    bq_row_count_check_on_dim_products = BigQueryCheckOperator(
+        task_id = 'bq_row_count_check_on_dim_products',
+        sql=f"""
+            SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_products_table_name}`
+            """,
+        use_legacy_sql=False
+    )
+
+    bq_row_count_check_on_dim_customers = BigQueryCheckOperator(
+        task_id = 'bq_row_count_check_on_dim_customers',
+        sql=f"""
+            SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_customers_table_name}`
+            """,
+        use_legacy_sql=False
+    )
+
+    ######### END Row Checker 
 
     gcs_to_bq_bronze_stores_external_tbl >> bq_to_bq_silver_stores_tbl
     gcs_to_bq_bronze_empployee_external_tbl >> bq_to_bq_silver_emp_tbl
     gcs_to_bq_bronze_product_external_tbl >> bq_to_bq_silver_product_tbl
     gcs_to_bq_bronze_customer_external_tbl >> bq_to_bq_silver_customer_tbl
     gcs_to_bq_bronze_transaction_external_tbl >> bq_to_bq_silver_transaction_tbl
+
+    
+    [bq_to_bq_silver_customer_tbl] >> bq_gold_dim_customers >> bq_row_count_check_on_dim_customers
+
+    [bq_to_bq_silver_product_tbl] >> bq_gold_dim_products >> bq_row_count_check_on_dim_products
+
+    [bq_to_bq_silver_emp_tbl] >> bq_gold_dim_employees >> bq_row_count_check_on_dim_employees
+
+    [bq_to_bq_silver_stores_tbl] >> bq_gold_dim_stores >> bq_row_count_check_on_dim_stores
+
+    [bq_gold_dim_customers, 
+    bq_gold_dim_products, 
+    bq_gold_dim_employees, 
+    bq_gold_dim_stores, 
+    bq_to_bq_silver_transaction_tbl] >> bq_gold_fact_transactions >> bq_row_count_check_on_fact_transactions
+
+
+
 
 if __name__ == "__main__":
     dag.cli()
