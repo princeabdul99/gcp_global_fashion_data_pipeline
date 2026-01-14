@@ -31,7 +31,9 @@ SELECT
     ) AS sku,    
     t.transaction_type,
     t.payment_method,
-    t.invoice_total
+    t.invoice_total,
+    _FILE_NAME AS source_file,
+    CURRENT_TIMESTAMP() AS load_time    
 
 
 FROM `{{ params.bronze_table }}` t
