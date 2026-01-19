@@ -4,6 +4,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from airflow.sdk import DAG
+from airflow.datasets import Dataset
 from airflow.models import Variable
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator, BigQueryCheckOperator
 
@@ -109,7 +110,7 @@ bq_transactions_silver_source_tbl = create_sql_ext_tbl("/opt/airflow/include/dat
 
 
 # DWH - Gold Layer
-bq_fact_sales_table_name = "fact_transaction"
+bq_fact_sales_table_name = "fact_transactions"
 bq_fact_sales_table_id = f"{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_fact_sales_table_name}"
 bq_transactions_gold_source_tbl = create_sql_ext_tbl("/opt/airflow/include/data_mart/fact_transactions.sql")
 
@@ -390,6 +391,7 @@ with DAG(
             "dim_table_join_product": bq_dim_products_table_id,
             "dim_table_join_emp": bq_dim_employees_table_id,
             "dim_table_join_store": bq_dim_stores_table_id,
+            "dim_table_join_customer": bq_dim_customers_table_id,
             "gold_table": bq_fact_sales_table_id,
         },
     )
@@ -490,7 +492,11 @@ with DAG(
         sql=f"""
             SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_fact_sales_table_name}`
             """,
-        use_legacy_sql=False
+        use_legacy_sql=False,
+
+        # Send signal for downstream dag
+        outlets=[Dataset("gold_fact_transactions")]
+
     )
 
     bq_row_count_check_on_dim_stores = BigQueryCheckOperator(
@@ -498,7 +504,10 @@ with DAG(
         sql=f"""
             SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_stores_table_name}`
             """,
-        use_legacy_sql=False
+        use_legacy_sql=False,
+
+        # Send signal for downstream dag
+        outlets=[Dataset("gold_dim_stores")]
     ) 
 
     bq_row_count_check_on_dim_employees = BigQueryCheckOperator(
@@ -506,7 +515,11 @@ with DAG(
         sql=f"""
             SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_employees_table_name}`
             """,
-        use_legacy_sql=False
+        use_legacy_sql=False,
+
+
+        # Send signal for downstream dag
+        outlets=[Dataset("gold_dim_employees")]
     ) 
 
     bq_row_count_check_on_dim_products = BigQueryCheckOperator(
@@ -514,7 +527,10 @@ with DAG(
         sql=f"""
             SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_products_table_name}`
             """,
-        use_legacy_sql=False
+        use_legacy_sql=False,
+
+        # Send signal for downstream dag
+        outlets=[Dataset("gold_dim_products")]        
     )
 
     bq_row_count_check_on_dim_customers = BigQueryCheckOperator(
@@ -522,7 +538,10 @@ with DAG(
         sql=f"""
             SELECT COUNT(*) FROM `{GCP_PROJECT_ID}.{bq_gold_dataset}.{bq_dim_customers_table_name}`
             """,
-        use_legacy_sql=False
+        use_legacy_sql=False,
+
+        # Send signal for downstream dag
+        outlets=[Dataset("gold_dim_customers")]        
     )
 
     ######### END Row Checker 
