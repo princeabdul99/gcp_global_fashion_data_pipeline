@@ -1,3 +1,26 @@
+CREATE TABLE IF NOT EXISTS `{{ params.gold_table }}`
+(
+    invoice_id STRING,
+    line INT64,
+    customer_id INT64,
+    product_id INT64,
+    size STRING,
+    color STRING,
+    unit_price FLOAT64,
+    quantity INT64,
+    transaction_date DATE,
+    discount FLOAT64,
+    line_total FLOAT64,
+    store_id INT64,
+    employee_id INT64,
+    currency STRING,
+    currency_symbol STRING,
+    sku STRING,
+    transaction_type STRING,
+    payment_method STRING,
+    invoice_total FLOAT64
+) PARTITION BY transaction_date;
+
 DELETE FROM `{{ params.gold_table }}`
 WHERE transaction_date IN (
     SELECT DISTINCT DATE(date)
@@ -9,31 +32,29 @@ INSERT INTO `{{ params.gold_table }}`
 with products AS (
     SELECT
         product_id,
-        category,
-        sub_category
     FROM `{{ params.dim_table_join_product }}`
 ),
 employees AS (
     SELECT
         employee_id,
-        name,
-        position,
     FROM `{{ params.dim_table_join_emp }}`
 ),
 stores AS (
     SELECT
         store_id,
-        city,
-        country
     FROM `{{ params.dim_table_join_store }}`
+),
+customers AS (
+    SELECT
+        customer_id,
+    FROM `{{ params.dim_table_join_customer }}`
 )
 
 SELECT
     invoice_id,
     line,
-    customer_id,
-    -- p.product_id,
-    p.category AS category,
+    c.customer_id,
+    p.product_id,
     size, 
     color,   
     unit_price,
@@ -41,9 +62,8 @@ SELECT
     DATE(date) AS transaction_date,
     discount,
     line_total,
-    s.city,
-    s.country,
-    e.position AS processed_by,
+    s.store_id,
+    e.employee_id,
     currency,
     currency_symbol,
     sku,    
@@ -58,4 +78,6 @@ INNER JOIN products p
 INNER JOIN employees e
     ON t.employee_id = e.employee_id
 INNER JOIN stores s
-    ON t.store_id = s.store_id;
+    ON t.store_id = s.store_id
+INNER JOIN customers c
+    ON t.customer_id = c.customer_id;    
