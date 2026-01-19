@@ -1,3 +1,9 @@
+with productsdata as (
+    SELECT *,
+        ROW_NUMBER() OVER(PARTITION BY product_id ORDER BY product_id) as rn
+    FROM `{{ params.bronze_table }}`
+)
+
 
 SELECT
     product_id,
@@ -8,4 +14,5 @@ SELECT
     COALESCE(sizes, 'N/A') AS sizes,   
     production_cost
 
-FROM `{{ params.bronze_table }}`
+FROM productsdata
+WHERE rn = 1

@@ -1,4 +1,11 @@
 
+
+with customersdata as (
+    SELECT *,
+        ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY customer_id) as rn
+    FROM `{{ params.bronze_table }}`
+)
+
 SELECT 
     customer_id,
     name,
@@ -23,5 +30,7 @@ SELECT
         ELSE gender
     END AS gender,
     date_of_birth,
-    COALESCE(job_title, 'N/A') AS job_title   
-FROM `{{ params.bronze_table }}`
+    COALESCE(job_title, 'N/A') AS job_title
+
+FROM customersdata
+WHERE rn = 1

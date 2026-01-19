@@ -1,4 +1,11 @@
 
+with storesdata as (
+    SELECT *,
+        ROW_NUMBER() OVER(PARTITION BY store_id ORDER BY store_id ) as rn
+    FROM `{{ params.bronze_table }}`
+)
+
+
 SELECT 
     store_id,
     CASE 
@@ -28,4 +35,5 @@ SELECT
     zip_code,
     latitude,
     longitude     
-FROM `{{ params.bronze_table }}`
+FROM storesdata
+WHERE rn = 1

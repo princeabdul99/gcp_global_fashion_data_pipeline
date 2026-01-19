@@ -38,4 +38,11 @@ SELECT
 
 FROM `{{ params.bronze_table }}` t
 INNER JOIN products p
-    ON t.product_id = p.product_id
+    ON t.product_id = p.product_id;
+
+
+-- with transactionsdata as (
+--     SELECT *,
+--         ROW_NUMBER() OVER(PARTITION BY invoice_id, product_id, customer_id, line ORDER BY date, line DESC) as rn
+--     FROM `ecom-pipeline-gcp.silver.transactions`
+-- )    
