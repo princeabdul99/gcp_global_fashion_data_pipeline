@@ -3,4 +3,4 @@
 docs.md
 logs/
 secrets/
-_pycache_
+__pycache__
